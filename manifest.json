@@ -1,0 +1,17 @@
+{
+  "name": "TikChl Downloader",
+  "short_name": "TikFlow",
+  "description": "Download TikTok Video & Foto HD",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#0b0f1a",
+  "theme_color": "#EE1D52",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3046/3046121.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
