@@ -37,3 +37,80 @@ body {
   background: #334155;
   border-radius: 10px;
 }
+/* Overlay Download Elegan */
+.dl-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 15, 26, 0.8);
+  backdrop-filter: blur(12px);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Progress Bar Container */
+.dl-progress-container {
+  width: 280px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  overflow: hidden;
+  margin: 20px 0;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Moving Progress Fill */
+.dl-progress-fill {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, #69C9D0 0%, #EE1D52 100%);
+  box-shadow: 0 0 20px rgba(105, 201, 208, 0.4);
+  transition: width 0.3s ease-out;
+}
+
+/* Floating Icon Animation */
+.dl-icon-bounce {
+  animation: dl-bounce 2s ease-in-out infinite;
+  background: linear-gradient(45deg, #69C9D0, #EE1D52);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+@keyframes dl-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-15px); }
+}
+#downloadProgressContainer {
+  background: var(--bg);
+  padding: 15px;
+  border-radius: 20px;
+  margin-bottom: 12px;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.progress-bar-bg {
+  width: 100%;
+  height: 8px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.progress-fill-anim {
+  width: 0%;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 10px;
+  transition: width 0.3s ease-out;
+}
