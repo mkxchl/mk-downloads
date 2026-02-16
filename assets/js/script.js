@@ -14,12 +14,11 @@ function showAlert (message, type = 'error', onConfirm = null) {
     icon.classList.add('bg-amber-500/20', 'text-amber-500')
     title.innerText = 'Konfirmasi'
     icon.innerHTML = '<i class="fas fa-question-circle text-2xl"></i>'
-
     actions.innerHTML = `
-                <button id="confirmYes" class="w-full py-4 rounded-xl font-bold text-sm bg-[#EE1D52] text-white active:scale-95 transition">Ya, Hapus Semua</button>
-                <button onclick="closeAlert()" class="w-full py-3 text-slate-500 text-xs font-bold hover:text-white transition">Batalkan</button>
-            `
-    document.getElementById('confirmYes').onclick = () => {
+                    <button id="confirmBtn" class="w-full py-4 rounded-xl font-bold text-sm bg-[#EE1D52] text-white active:scale-95 transition">Ya, Hapus Semua</button>
+                    <button onclick="closeAlert()" class="w-full py-2 text-slate-500 text-xs font-bold hover:text-white transition">Batalkan</button>
+                `
+    document.getElementById('confirmBtn').onclick = () => {
       onConfirm()
       closeAlert()
     }
@@ -53,8 +52,65 @@ function closeAlert () {
   setTimeout(() => modal.classList.add('hidden'), 300)
 }
 
-document.addEventListener('DOMContentLoaded', renderHistory)
+async function forceDownload(url, filename) {
+    const container = document.getElementById('downloadProgressContainer');
+    const fill = document.getElementById('progressFill');
+    const percentText = document.getElementById('progressPercent');
+    const sizeText = document.getElementById('progressSize');
 
+    const randomSuffix = Math.floor(Math.random() * 10000);
+    const nameParts = filename.split('.');
+    const ext = nameParts.pop();
+    const finalFilename = `${nameParts.join('.')}_${randomSuffix}.${ext}`;
+
+    container.classList.remove('hidden');
+    fill.style.width = '0%';
+    percentText.innerText = '0%';
+    sizeText.innerText = 'Memulai unduhan...';
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Gagal mengunduh file');
+        const reader = response.body.getReader();
+        const contentLength = +response.headers.get('Content-Length');
+        let receivedLength = 0; 
+        let chunks = []; 
+        while(true) {
+            const {done, value} = await reader.read();
+            if (done) break;
+
+            chunks.push(value);
+            receivedLength += value.length;
+
+            if (contentLength) {
+                const step = (receivedLength / contentLength) * 100;
+                const totalMB = (contentLength / (1024 * 1024)).toFixed(1);
+                const currentMB = (receivedLength / (1024 * 1024)).toFixed(1);
+                
+                fill.style.width = `${step}%`;
+                percentText.innerText = `${Math.round(step)}%`;
+                sizeText.innerText = `${currentMB} MB / ${totalMB} MB`;
+            }
+        }
+        const blob = new Blob(chunks);
+        const blobUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = finalFilename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(blobUrl);
+        container.classList.add('hidden');
+        showAlert(`Berhasil diunduh!`, 'success');
+    } catch (error) {
+        console.error("Download error:", error);
+        showAlert('Gagal mengunduh file secara otomatis. Membuka di tab baru.', 'error');
+        window.open(url, '_blank');
+        container.classList.add('hidden');
+    }
+}
+document.addEventListener('DOMContentLoaded', renderHistory)
 function saveToHistory (data) {
   let history = JSON.parse(localStorage.getItem('tikchl_history') || '[]')
   const newItem = {
@@ -74,7 +130,6 @@ function renderHistory () {
   const list = document.getElementById('historyList')
   const sec = document.getElementById('historySection')
   const history = JSON.parse(localStorage.getItem('tikchl_history') || '[]')
-
   if (history.length === 0) {
     sec.classList.add('hidden')
     return
@@ -83,29 +138,24 @@ function renderHistory () {
   list.innerHTML = history
     .map(
       item => `
-            <div class="glass-card p-3 rounded-2xl flex items-center gap-4 hover:border-[#69C9D0]/50 transition group cursor-pointer" onclick="reFetch('${item.id}')">
-                <img src="${item.cover}" class="w-14 h-14 object-cover rounded-lg">
-                <div class="flex-1 text-left overflow-hidden">
-                    <p class="text-white font-bold text-xs truncate">@${item.author}</p>
-                    <p class="text-slate-500 text-[10px] truncate mb-1">${item.title}</p>
-                    <p class="text-[8px] text-[#69C9D0] uppercase font-bold tracking-widest italic">${item.date}</p>
-                </div>
-                <div class="p-2 text-slate-600 group-hover:text-[#69C9D0] transition"><i class="fas fa-chevron-right text-xs"></i></div>
-            </div>
-        `
+                <div class="glass-card p-3 rounded-2xl flex items-center gap-4 hover:border-[#69C9D0]/50 transition group cursor-pointer" onclick="reFetch('${item.id}')">
+                    <img src="${item.cover}" class="w-14 h-14 object-cover rounded-lg">
+                    <div class="flex-1 text-left overflow-hidden">
+                        <p class="text-white font-bold text-xs truncate">@${item.author}</p>
+                        <p class="text-slate-500 text-[10px] truncate mb-1">${item.title}</p>
+                        <p class="text-[8px] text-[#69C9D0] uppercase font-bold tracking-widest italic">${item.date}</p>
+                    </div>
+                    <div class="p-2 text-slate-600 group-hover:text-[#69C9D0] transition"><i class="fas fa-chevron-right text-xs"></i></div>
+                </div>`
     )
     .join('')
 }
 
 function clearHistory () {
-  showAlert(
-    'Apakah kamu yakin ingin menghapus semua riwayat unduhan? Tindakan ini tidak bisa dibatalkan.',
-    'confirm',
-    () => {
-      localStorage.removeItem('tikchl_history')
-      renderHistory()
-    }
-  )
+  showAlert('Hapus semua riwayat unduhan?', 'confirm', () => {
+    localStorage.removeItem('tikchl_history')
+    renderHistory()
+  })
 }
 
 function reFetch (id) {
@@ -125,8 +175,7 @@ async function fetchContent () {
   const imageList = document.getElementById('imageList')
   const actionButtons = document.getElementById('actionButtons')
 
-  if (!url)
-    return showAlert('Silakan tempelkan link TikTok terlebih dahulu.', 'error')
+  if (!url) return showAlert('Tempel link TikTok dulu!', 'error')
 
   btn.disabled = true
   loader.classList.remove('hidden')
@@ -141,57 +190,53 @@ async function fetchContent () {
     const res = await response.json()
 
     if (res.code === 0) {
-      const currentData = res.data
-      saveToHistory(currentData)
-
-      document.getElementById('vCover').src = currentData.cover
-      document.getElementById(
-        'vAuthor'
-      ).innerText = `@${currentData.author.unique_id}`
+      const data = res.data
+      saveToHistory(data)
+      document.getElementById('vCover').src = data.cover
+      document.getElementById('vAuthor').innerText = `@${data.author.unique_id}`
       document.getElementById('vTitle').innerText =
-        currentData.title || 'TikTok Content'
+        data.title || 'TikTok Content'
 
-      if (currentData.images && currentData.images.length > 0) {
+      if (data.images && data.images.length > 0) {
         photoGallery.classList.remove('hidden')
-        currentData.images.forEach((imgUrl, index) => {
+        data.images.forEach((img, i) => {
           imageList.innerHTML += `
-                            <div class="relative group overflow-hidden rounded-xl aspect-[3/4] glass-card">
-                                <img src="${imgUrl}" class="w-full h-full object-cover">
-                                <a href="${imgUrl}" target="_blank" class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                                    <span class="bg-white text-black px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-tighter">Unduh #${
-                                      index + 1
-                                    }</span>
-                                </a>
-                            </div>`
+                                <div onclick="forceDownload('${img}', 'TikChl_Img_${i}.jpg')" class="relative group overflow-hidden rounded-xl aspect-[3/4] glass-card cursor-pointer">
+                                    <img src="${img}" class="w-full h-full object-cover">
+                                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                                        <i class="fas fa-download text-white"></i>
+                                    </div>
+                                </div>`
         })
-        actionButtons.innerHTML = `<button onclick="window.open('${currentData.music}', '_blank')" class="bg-white text-black p-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-200 transition text-sm"><i class="fas fa-music"></i> Audio Slide</button>`
+        actionButtons.innerHTML = `<button onclick="forceDownload('${data.music}', 'TikChl_Audio.mp3')" class="bg-white text-black p-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-200 transition text-sm"><i class="fas fa-music"></i> Simpan Audio</button>`
       } else {
         actionButtons.innerHTML = `
-                        <button onclick="window.open('${currentData.play}', '_blank')" class="bg-[#EE1D52] p-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:brightness-110 transition text-sm shadow-lg shadow-[#EE1D52]/20"><i class="fas fa-video"></i> Video No WM</button>
-                        <button onclick="window.open('${currentData.music}', '_blank')" class="bg-white text-black p-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-200 transition text-sm"><i class="fas fa-music"></i> Audio MP3</button>`
+                            <button onclick="forceDownload('${data.play}', 'TikChl_Video.mp4')" class="bg-[#EE1D52] p-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:brightness-110 transition text-sm shadow-lg shadow-[#EE1D52]/20"><i class="fas fa-video"></i> Video No WM</button>
+                            <button onclick="forceDownload('${data.music}', 'TikChl_Audio.mp3')" class="bg-white text-black p-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-200 transition text-sm"><i class="fas fa-music"></i> Simpan MP3</button>`
       }
       loader.classList.add('hidden')
       resultBox.classList.remove('hidden')
     } else {
-      showAlert(
-        'Tautan tidak valid atau video bersifat privat. Pastikan link benar!',
-        'error'
-      )
+      showAlert('Tautan tidak valid atau video privat.', 'error')
       loader.classList.add('hidden')
     }
   } catch (err) {
-    showAlert(
-      'Terjadi gangguan koneksi ke server. Silakan coba lagi nanti.',
-      'error'
-    )
+    showAlert('Gangguan server, coba lagi nanti.', 'error')
     loader.classList.add('hidden')
   } finally {
     btn.disabled = false
   }
 }
-function MkIg() {
+
+function MkIg () {
   window.open('https://www.instagram.com/chellgnzxz/', '_blank')
 }
-function MkTw() {
+function MkTw () {
   window.open('https://x.com/marchel_kvandra', '_blank')
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {})
+  })
 }
